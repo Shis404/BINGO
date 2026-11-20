@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BINGO 25 — Verbal Cut & Cross Game</title>
+
+  <!-- Tailwind CSS for responsive layout and utility styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tone.js for procedural game sound effects (no external audio URLs needed) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+  <!-- Google Fonts: Fredoka for playful game numbers/headers & Plus Jakarta Sans for clean UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script>
+    // Configure Tailwind theme extensions for fonts and custom animations
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fredoka', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          keyframes: {
+            popIn: {
+              '0%': { transform: 'scale(0.75)', opacity: '0' },
+              '70%': { transform: 'scale(1.08)' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            letterBounce: {
+              '0%, 100%': { transform: 'translateY(0) scale(1)' },
+              '40%': { transform: 'translateY(-8px) scale(1.14) rotate(-3deg)' },
+              '70%': { transform: 'translateY(2px) scale(0.96) rotate(2deg)' },
+            },
+            pulseGlow: {
+              '0%, 100%': { boxShadow: '0 0 0 0 rgba(245, 158, 11, 0.45)' },
+              '50%': { boxShadow: '0 0 0 10px rgba(245, 158, 11, 0)' },
+            }
+          },
+          animation: {
+            'pop-in': 'popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+            'letter-bounce': 'letterBounce 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            'pulse-glow': 'pulseGlow 2s infinite',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom tactile game styling & SVG hand-drawn strike animations */
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .font-game {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    /* Subtle notebook grid pattern background for authentic pen-and-paper charm */
+    .bg-notebook {
+      background-color: #fdfbf7;
+      background-image:
+        linear-gradient(to right, rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .dark .bg-notebook {
+      background-color: #0f172a;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    /* Animated hand-drawn SVG cross stroke */
+    .cross-path-1 {
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: drawStroke 0.22s ease-out forwards;
+    }
+
+    .cross-path-2 {
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: drawStroke 0.22s ease-out 0.08s forwards;
+    }
+
+    @keyframes drawStroke {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    /* Custom sleek scrollbar for the spoken number sequence strip */
+    .sequence-scroll::-webkit-scrollbar {
+      height: 5px;
+    }
+    .sequence-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .sequence-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+
+    /* Tactile 3D push button feel */
+    .btn-tactile {
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+    }
+    .btn-tactile:active:not(:disabled) {
+      transform: translateY(3px);
+    }
+  </style>
+</head>
+
+<body class="bg-notebook text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200 overflow-x-hidden">
+
+  <!-- Full-screen Confetti Canvas (hidden until BINGO win celebration) -->
+  <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+  <!-- Top Navigation & Utility Bar -->
+  <header class="w-full max-w-5xl mx-auto px-4 pt-3 pb-2 flex flex-wrap items-center justify-between gap-2">
+    <!-- Brand Title -->
+    <div class="flex items-center gap-2.5">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-game font-bold text-xl shadow-md shadow-indigo-500/20">
+        25
+      </div>
+      <div>
+        <h1 class="font-game font-bold text-xl sm:text-2xl tracking-tight leading-none bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400 bg-clip-text text-transparent">
+          BINGO 25
+        </h1>
+        <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
+          Digital Cut &amp; Cross Sheet
+        </p>
+      </div>
+    </div>
+
+    <!-- Mode Switcher & Quick Controls -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <!-- Game Mode Selector: Verbal Single Sheet vs 2-Player Shared Device -->
+      <div class="bg-white/90 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center text-xs font-bold">
+        <button id="mode-solo-btn" onclick="switchGameMode('solo')"
+          class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm">
+          <span>🗣️</span>
+          <span>My Sheet</span>
+        </button>
+        <button id="mode-duo-btn" onclick="switchGameMode('duo')"
+          class="px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+          <span>👥</span>
+          <span>2-Player</span>
+        </button>
+      </div>
+
+      <!-- How to Play Help Button -->
+      <button onclick="openRulesModal()" title="How to Play"
+        class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm btn-tactile"
+        aria-label="How to play">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+        </svg>
+      </button>
+
+      <!-- Sound Effects Toggle Button -->
+      <button id="sound-toggle-btn" onclick="toggleSound()" title="Toggle Sound Effects"
+        class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm btn-tactile"
+        aria-label="Toggle Sound">
+        <span id="sound-icon" class="text-base">🔊</span>
+      </button>
+
+      <!-- Dark / Light Theme Toggle Button -->
+      <button id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light/Dark Mode"
+        class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm btn-tactile"
+        aria-label="Toggle Theme">
+        <span id="theme-icon" class="text-base">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Interactive Game Container -->
+  <main id="app-container" class="flex-1 w-full max-w-5xl mx-auto px-3 sm:px-4 pb-6 flex flex-col justify-center">
+    <!-- Dynamically rendered by JavaScript based on Solo (Verbal) or Duo (2-Player) mode -->
+  </main>
+
+  <!-- Toast Notification Pill (Replaces native alerts cleanly) -->
+  <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2 w-full max-w-sm px-4"></div>
+
+  <!-- Custom Confirmation Modal (For resetting/starting a new board) -->
+  <div id="confirm-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 animate-pop-in text-center">
+      <div class="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+        🔄
+      </div>
+      <h3 id="confirm-title" class="font-game text-xl font-bold text-slate-800 dark:text-white mb-1.5">
+        Start a Fresh Board?
+      </h3>
+      <p id="confirm-message" class="text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
+        This will clear your current crossed numbers so you can arrange a new 1–25 grid.
+      </p>
+      <div class="flex gap-3">
+        <button onclick="closeConfirmModal()"
+          class="flex-1 py-3 px-4 rounded-2xl font-bold text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 btn-tactile">
+          Keep Playing
+        </button>
+        <button id="confirm-action-btn"
+          class="flex-1 py-3 px-4 rounded-2xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/25 btn-tactile">
+          New Board
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to Play Rules Modal -->
+  <div id="rules-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onclick="if(event.target===this) closeRulesModal()">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 animate-pop-in">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-game text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <span>🎲</span> How to Play BINGO 25
+        </h3>
+        <button onclick="closeRulesModal()" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-300 font-bold">
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-3.5 text-sm text-slate-600 dark:text-slate-300">
+        <div class="flex gap-3 items-start bg-indigo-50/70 dark:bg-indigo-950/40 p-3 rounded-2xl">
+          <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-game font-bold flex items-center justify-center shrink-0">1</span>
+          <div>
+            <p class="font-bold text-slate-800 dark:text-white">Arrange Numbers 1 to 25</p>
+            <p class="text-xs mt-0.5 leading-relaxed">Shuffle randomly, or clear the grid and tap boxes in order to place 1–25 anywhere you like. Tap any two numbers to swap them!</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-start bg-pink-50/70 dark:bg-pink-950/40 p-3 rounded-2xl">
+          <span class="w-7 h-7 rounded-xl bg-pink-600 text-white font-game font-bold flex items-center justify-center shrink-0">2</span>
+          <div>
+            <p class="font-bold text-slate-800 dark:text-white">Call Numbers Verbally &amp; Cross</p>
+            <p class="text-xs mt-0.5 leading-relaxed">Take turns saying a number out loud with your friend. Both players tap that number on their own screen to cross it off.</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-start bg-amber-50/70 dark:bg-amber-950/40 p-3 rounded-2xl">
+          <span class="w-7 h-7 rounded-xl bg-amber-500 text-white font-game font-bold flex items-center justify-center shrink-0">3</span>
+          <div>
+            <p class="font-bold text-slate-800 dark:text-white">Complete 5 Lines for B-I-N-G-O!</p>
+            <p class="text-xs mt-0.5 leading-relaxed">Every full <strong>row</strong>, <strong>column</strong>, or <strong>diagonal</strong> of 5 crossed numbers unlocks the next letter: <strong>B → I → N → G → O</strong>. First to complete all 5 lines wins!</p>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="closeRulesModal()"
+        class="w-full mt-5 py-3 rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25 btn-tactile">
+        Got It, Let's Play!
+      </button>
+    </div>
+  </div>
+
+  <!-- BINGO Victory Modal -->
+  <div id="victory-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/65 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-amber-400 animate-pop-in text-center relative overflow-hidden">
+      <div class="inline-flex items-center gap-1.5 mb-3">
+        <span class="w-10 h-10 rounded-xl bg-rose-500 text-white font-game font-bold text-xl flex items-center justify-center shadow-md animate-bounce">B</span>
+        <span class="w-10 h-10 rounded-xl bg-amber-500 text-white font-game font-bold text-xl flex items-center justify-center shadow-md animate-bounce" style="animation-delay: 0.08s">I</span>
+        <span class="w-10 h-10 rounded-xl bg-emerald-500 text-white font-game font-bold text-xl flex items-center justify-center shadow-md animate-bounce" style="animation-delay: 0.16s">N</span>
+        <span class="w-10 h-10 rounded-xl bg-sky-500 text-white font-game font-bold text-xl flex items-center justify-center shadow-md animate-bounce" style="animation-delay: 0.24s">G</span>
+        <span class="w-10 h-10 rounded-xl bg-purple-500 text-white font-game font-bold text-xl flex items-center justify-center shadow-md animate-bounce" style="animation-delay: 0.32s">O</span>
+      </div>
+
+      <h2 id="victory-headline" class="font-game text-3xl font-bold text-slate-800 dark:text-white mb-1">
+        BINGO! YOU WIN!
+      </h2>
+      <p id="victory-subtext" class="text-sm text-slate-600 dark:text-slate-300 mb-5">
+        Completed 5 lines in 16 spoken numbers!
+      </p>
+
+      <div class="flex flex-col gap-2.5">
+        <button onclick="startNewBoardFromWin()"
+          class="w-full py-3.5 px-4 rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/30 btn-tactile">
+          🎲 Play Again (New Grid)
+        </button>
+        <button onclick="dismissVictoryModal()"
+          class="w-full py-2.5 px-4 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 btn-tactile">
+          View Completed Board
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================================
+       1. SOUND EFFECTS ENGINE (Tone.js procedural synthesis - zero external URLs)
+       ============================================================================ */
+    const SoundFX = {
+      enabled: true,
+      initialized: false,
+      synth: null,
+
+      // Safely initialize Tone.js audio context upon first user interaction
+      async init() {
+        if (this.initialized || !this.enabled) return;
+        try {
+          if (typeof Tone !== 'undefined') {
+            await Tone.start();
+            this.synth = new Tone.PolySynth(Tone.Synth, {
+              oscillator: { type: 'triangle' },
+              envelope: { attack: 0.01, decay: 0.14, sustain: 0.05, release: 0.2 }
+            }).toDestination();
+            this.synth.volume.value = -8;
+            this.initialized = true;
+          }
+        } catch (err) {
+          console.warn('Audio init skipped:', err);
+        }
+      },
+
+      // Crisp pop when placing or swapping numbers during grid setup
+      async playPop(step = 0) {
+        if (!this.enabled) return;
+        await this.init();
+        if (!this.synth) return;
+        try {
+          const notes = ['C5', 'D5', 'E5', 'G5', 'A5'];
+          const note = notes[step % notes.length];
+          this.synth.triggerAttackRelease(note, '32n');
+        } catch (e) {}
+      },
+
+      // Satisfying pen-slash tick when crossing out a number
+      async playCross() {
+        if (!this.enabled) return;
+        await this.init();
+        if (!this.synth) return;
+        try {
+          this.synth.triggerAttackRelease('G4', '32n');
+          setTimeout(() => {
+            if (this.synth) this.synth.triggerAttackRelease('C5', '32n');
+          }, 55);
+        } catch (e) {}
+      },
+
+      // Subtle downward blip when uncrossing/undoing a number
+      async playUncross() {
+        if (!this.enabled) return;
+        await this.init();
+        if (!this.synth) return;
+        try {
+          this.synth.triggerAttackRelease('E4', '32n');
+        } catch (e) {}
+      },
+
+      // Ascending celebratory chime when unlocking B, I, N, G, or O
+      async playLetterUnlock(letterCount) {
+        if (!this.enabled) return;
+        await this.init();
+        if (!this.synth) return;
+        try {
+          const scale = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6'];
+          const target = scale[Math.min(letterCount, scale.length - 1)];
+          this.synth.triggerAttackRelease(['C5', target], '16n');
+        } catch (e) {}
+      },
+
+      // Joyful major fanfare when reaching 5 lines (full BINGO!)
+      async playBingoFanfare() {
+        if (!this.enabled) return;
+        await this.init();
+        if (!this.synth) return;
+        try {
+          const now = Tone.now();
+          this.synth.triggerAttackRelease('C5', '16n', now);
+          this.synth.triggerAttackRelease('E5', '16n', now + 0.09);
+          this.synth.triggerAttackRelease('G5', '16n', now + 0.18);
+          this.synth.triggerAttackRelease(['C5', 'E5', 'G5', 'C6'], '4n', now + 0.28);
+        } catch (e) {}
+      }
+    };
+
+    /* ============================================================================
+       2. CONFETTI CELEBRATION ENGINE (Lightweight HTML5 Canvas particle burst)
+       ============================================================================ */
+    const Confetti = {
+      particles: [],
+      animId: null,
+
+      launch() {
+        const canvas = document.getElementById('confetti-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const colors = ['#f43f5e', '#f59e0b', '#10b981', '#0ea5e9', '#8b5cf6', '#ec4899'];
+        this.particles = [];
+
+        for (let i = 0; i < 130; i++) {
+          this.particles.push({
+            x: canvas.width * (0.2 + Math.random() * 0.6),
+            y: canvas.height * 0.45,
+            vx: (Math.random() - 0.5) * 16,
+            vy: -Math.random() * 15 - 5,
+            size: Math.random() * 8 + 5,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            rotSpeed: (Math.random() - 0.5) * 12,
+            gravity: 0.38
+          });
+        }
+
+        if (this.animId) cancelAnimationFrame(this.animId);
+
+        const render = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          let active = 0;
+
+          for (const p of this.particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            p.vx *= 0.99;
+            p.rotation += p.rotSpeed;
+
+            if (p.y < canvas.height + 30) {
+              active++;
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              ctx.rotate((p.rotation * Math.PI) / 180);
+              ctx.fillStyle = p.color;
+              ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+              ctx.restore();
+            }
+          }
+
+          if (active > 0) {
+            this.animId = requestAnimationFrame(render);
+          } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+        };
+
+        render();
+      }
+    };
+
+    /* ============================================================================
+       3. GAME STATE & CORE 5x5 BINGO LOGIC
+       ============================================================================ */
+    const BINGO_LETTERS = [
+      { char: 'B', color: 'from-rose-500 to-red-600', ring: 'ring-rose-400', text: 'text-rose-600 dark:text-rose-400' },
+      { char: 'I', color: 'from-amber-400 to-orange-500', ring: 'ring-amber-400', text: 'text-amber-600 dark:text-amber-400' },
+      { char: 'N', color: 'from-emerald-400 to-teal-600', ring: 'ring-emerald-400', text: 'text-emerald-600 dark:text-emerald-400' },
+      { char: 'G', color: 'from-sky-400 to-blue-600', ring: 'ring-sky-400', text: 'text-sky-600 dark:text-sky-400' },
+      { char: 'O', color: 'from-purple-500 to-indigo-600', ring: 'ring-purple-400', text: 'text-purple-600 dark:text-purple-400' }
+    ];
+
+    // Precompute all 12 possible winning lines on a 5x5 board (5 rows + 5 cols + 2 diagonals)
+    const ALL_LINES = (() => {
+      const lines = [];
+      // 5 Horizontal Rows
+      for (let r = 0; r < 5; r++) {
+        lines.push({
+          id: `row-${r}`,
+          label: `Row ${r + 1}`,
+          type: 'row',
+          cells: [r * 5, r * 5 + 1, r * 5 + 2, r * 5 + 3, r * 5 + 4]
+        });
+      }
+      // 5 Vertical Columns
+      for (let c = 0; c < 5; c++) {
+        lines.push({
+          id: `col-${c}`,
+          label: `Col ${c + 1}`,
+          type: 'col',
+          cells: [c, c + 5, c + 10, c + 15, c + 20]
+        });
+      }
+      // 2 Main Diagonals
+      lines.push({
+        id: 'diag-main',
+        label: 'Diag ↘',
+        type: 'diag',
+        cells: [0, 6, 12, 18, 24]
+      });
+      lines.push({
+        id: 'diag-anti',
+        label: 'Diag ↙',
+        type: 'diag',
+        cells: [4, 8, 12, 16, 20]
+      });
+      return lines;
+    })();
+
+    // Helper: Generate a shuffled array of numbers 1..25 using Fisher-Yates
+    function generateShuffledNumbers() {
+      const arr = Array.from({ length: 25 }, (_, i) => i + 1);
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Factory: Create a fresh board object for a player
+    function createBoardState(name = 'My Board', prefill = true) {
+      return {
+        name,
+        phase: 'setup', // 'setup' | 'playing'
+        grid: prefill ? generateShuffledNumbers() : Array(25).fill(0),
+        crossed: Array(25).fill(false),
+        history: [], // Chronological array of crossed numbers: [{ num, index }]
+        selectedSwapIdx: null, // Used during setup when swapping two numbers
+        completedLineIds: [], // Tracks IDs of completed rows/cols/diags in order earned
+        hasCelebratedWin: false,
+        hidden: false // Privacy shield for 2-Player mode
+      };
+    }
+
+    // Master Application State
+    const AppState = {
+      mode: 'solo', // 'solo' (My Sheet for verbal play) | 'duo' (2-Player local shared device)
+      syncDuoCalls: true, // In 2-player mode, crossing a number automatically crosses it on both boards
+      activeModalBoardIndex: 0,
+      boards: [
+        createBoardState('Player 1', true),
+        createBoardState('Player 2', true)
+      ]
+    };
+
+    /* ============================================================================
+       4. BOARD EVALUATION & INTERACTION HANDLERS
+       ============================================================================ */
+
+    // Evaluate completed lines on a board and preserve the chronological order letters were earned
+    function evaluateBoardLines(board) {
+      const currentlyComplete = ALL_LINES.filter(line =>
+        line.cells.every(idx => board.crossed[idx])
+      );
+      const currentIds = new Set(currentlyComplete.map(l => l.id));
+
+      // Keep previously unlocked lines in their original order if still complete
+      const retained = board.completedLineIds.filter(id => currentIds.has(id));
+      // Append newly completed lines
+      const newlyAdded = currentlyComplete
+        .map(l => l.id)
+        .filter(id => !retained.includes(id));
+
+      const prevCount = board.completedLineIds.length;
+      board.completedLineIds = [...retained, ...newlyAdded];
+      const newCount = board.completedLineIds.length;
+
+      return {
+        prevCount,
+        newCount,
+        gainedLetter: newCount > prevCount,
+        completedLines: board.completedLineIds.map(id => ALL_LINES.find(l => l.id === id))
+      };
+    }
+
+    // Find the smallest missing number from 1..25 on a setup board
+    function getNextMissingNumber(grid) {
+      const present = new Set(grid.filter(n => n > 0));
+      for (let n = 1; n <= 25; n++) {
+        if (!present.has(n)) return n;
+      }
+      return null;
+    }
+
+    // Handle clicking a cell during SETUP phase (Place 1..25 sequentially OR swap two numbers)
+    function handleSetupCellClick(boardIdx, cellIdx) {
+      const board = AppState.boards[boardIdx];
+      if (board.phase !== 'setup') return;
+
+      const currentVal = board.grid[cellIdx];
+
+      // Case A: Cell is empty -> Place the next missing number (1 -> 2 -> 3 ... -> 25)
+      if (currentVal === 0) {
+        const nextNum = getNextMissingNumber(board.grid);
+        if (nextNum !== null) {
+          board.grid[cellIdx] = nextNum;
+          board.selectedSwapIdx = null;
+          SoundFX.playPop(nextNum);
+          renderApp();
+        }
+        return;
+      }
+
+      // Case B: Cell already has a number -> Select it for swapping, or swap with previously selected cell
+      if (board.selectedSwapIdx === null) {
+        board.selectedSwapIdx = cellIdx;
+        SoundFX.playPop(0);
+        renderApp();
+      } else if (board.selectedSwapIdx === cellIdx) {
+        // Deselect if tapped again
+        board.selectedSwapIdx = null;
+        renderApp();
+      } else {
+        // Swap the two numbers!
+        const firstIdx = board.selectedSwapIdx;
+        [board.grid[firstIdx], board.grid[cellIdx]] = [board.grid[cellIdx], board.grid[firstIdx]];
+        board.selectedSwapIdx = null;
+        SoundFX.playPop(3);
+        showToast(`Swapped ${board.grid[cellIdx]} & ${board.grid[firstIdx]}`);
+        renderApp();
+      }
+    }
+
+    // Shuffle all 25 numbers randomly on a setup board
+    function shuffleBoard(boardIdx) {
+      const board = AppState.boards[boardIdx];
+      board.grid = generateShuffledNumbers();
+      board.selectedSwapIdx = null;
+      SoundFX.playPop(4);
+      renderApp();
+    }
+
+    // Clear all 25 cells so the user can tap cells in custom 1 -> 25 sequence
+    function clearBoardForManualEntry(boardIdx) {
+      const board = AppState.boards[boardIdx];
+      board.grid = Array(25).fill(0);
+      board.selectedSwapIdx = null;
+      SoundFX.playUncross();
+      showToast('Tap boxes in order to place 1 → 25!');
+      renderApp();
+    }
+
+    // Auto-fill any remaining empty cells randomly while keeping numbers the user already placed
+    function autoFillRemaining(boardIdx) {
+      const board = AppState.boards[boardIdx];
+      const present = new Set(board.grid.filter(n => n > 0));
+      const missing = [];
+      for (let n = 1; n <= 25; n++) {
+        if (!present.has(n)) missing.push(n);
+      }
+      // Shuffle missing numbers
+      for (let i = missing.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [missing[i], missing[j]] = [missing[j], missing[i]];
+      }
+      let mIdx = 0;
+      for (let i = 0; i < 25; i++) {
+        if (board.grid[i] === 0) {
+          board.grid[i] = missing[mIdx++];
+        }
+      }
+      board.selectedSwapIdx = null;
+      SoundFX.playPop(2);
+      renderApp();
+    }
+
+    // Lock the 25 numbers and begin verbal gameplay!
+    function lockBoardAndPlay(boardIdx) {
+      const board = AppState.boards[boardIdx];
+      if (board.grid.includes(0)) {
+        showToast('Please fill all 25 numbers first!');
+        return;
+      }
+      board.phase = 'playing';
+      board.selectedSwapIdx = null;
+      board.crossed = Array(25).fill(false);
+      board.history = [];
+      board.completedLineIds = [];
+      board.hasCelebratedWin = false;
+      SoundFX.playLetterUnlock(4);
+      renderApp();
+    }
+
+    // Handle tapping a number during PLAYING phase (Cross or Uncross)
+    function handlePlayCellClick(boardIdx, cellIdx) {
+      const board = AppState.boards[boardIdx];
+      if (board.phase !== 'playing') return;
+
+      const clickedNumber = board.grid[cellIdx];
+      const isAlreadyCrossed = board.crossed[cellIdx];
+
+      // In 2-Player mode with Sync Calls enabled, apply the spoken number across BOTH boards!
+      if (AppState.mode === 'duo' && AppState.syncDuoCalls && AppState.boards[0].phase === 'playing' && AppState.boards[1].phase === 'playing') {
+        toggleNumberAcrossBoards(clickedNumber, !isAlreadyCrossed);
+      } else {
+        toggleSingleBoardCell(boardIdx, cellIdx, !isAlreadyCrossed);
+      }
+    }
+
+    // Toggle a specific cell on one board
+    function toggleSingleBoardCell(boardIdx, cellIdx, shouldCross) {
+      const board = AppState.boards[boardIdx];
+      const num = board.grid[cellIdx];
+
+      if (shouldCross && !board.crossed[cellIdx]) {
+        board.crossed[cellIdx] = true;
+        board.history.push({ num, index: cellIdx });
+
+        const evalResult = evaluateBoardLines(board);
+
+        if (evalResult.newCount >= 5 && !board.hasCelebratedWin) {
+          board.hasCelebratedWin = true;
+          SoundFX.playBingoFanfare();
+          Confetti.launch();
+          openVictoryModal(board);
+        } else if (evalResult.gainedLetter) {
+          const unlockedIdx = Math.min(evalResult.newCount - 1, 4);
+          const letterObj = BINGO_LETTERS[unlockedIdx];
+          SoundFX.playLetterUnlock(evalResult.newCount);
+          showToast(`Line complete! Unlocked "${letterObj.char}"!`);
+        } else {
+          SoundFX.playCross();
+        }
+      } else if (!shouldCross && board.crossed[cellIdx]) {
+        board.crossed[cellIdx] = false;
+        board.history = board.history.filter(item => item.index !== cellIdx);
+        evaluateBoardLines(board);
+        SoundFX.playUncross();
+      }
+
+      renderApp();
+    }
+
+    // Toggle a spoken number simultaneously on both boards in 2-Player mode
+    function toggleNumberAcrossBoards(spokenNum, shouldCross) {
+      let anyWon = null;
+      let anyLetter = false;
+
+      AppState.boards.forEach((board, bIdx) => {
+        const cellIdx = board.grid.indexOf(spokenNum);
+        if (cellIdx === -1) return;
+
+        if (shouldCross && !board.crossed[cellIdx]) {
+          board.crossed[cellIdx] = true;
+          board.history.push({ num: spokenNum, index: cellIdx });
+          const res = evaluateBoardLines(board);
+          if (res.newCount >= 5 && !board.hasCelebratedWin) {
+            board.hasCelebratedWin = true;
+            anyWon = board;
+          } else if (res.gainedLetter) {
+            anyLetter = true;
+          }
+        } else if (!shouldCross && board.crossed[cellIdx]) {
+          board.crossed[cellIdx] = false;
+          board.history = board.history.filter(item => item.index !== cellIdx);
+          evaluateBoardLines(board);
+        }
+      });
+
+      if (anyWon) {
+        SoundFX.playBingoFanfare();
+        Confetti.launch();
+        openVictoryModal(anyWon);
+      } else if (anyLetter) {
+        SoundFX.playLetterUnlock(3);
+      } else if (shouldCross) {
+        SoundFX.playCross();
+      } else {
+        SoundFX.playUncross();
+      }
+
+      renderApp();
+    }
+
+    // Undo the most recently crossed number in the sequence
+    function undoLastCross(boardIdx) {
+      const board = AppState.boards[boardIdx];
+      if (board.history.length === 0) return;
+
+      const lastEntry = board.history[board.history.length - 1];
+      if (AppState.mode === 'duo' && AppState.syncDuoCalls && AppState.boards[0].phase === 'playing' && AppState.boards[1].phase === 'playing') {
+        toggleNumberAcrossBoards(lastEntry.num, false);
+        showToast(`Undid #${lastEntry.num} on both sheets`);
+      } else {
+        toggleSingleBoardCell(boardIdx, lastEntry.index, false);
+        showToast(`Uncrossed #${lastEntry.num}`);
+      }
+    }
+
+    // Toggle privacy cover in 2-Player mode so Player 2 can't peek during setup
+    function togglePrivacyCover(boardIdx) {
+      AppState.boards[boardIdx].hidden = !AppState.boards[boardIdx].hidden;
+      SoundFX.playPop(1);
+      renderApp();
+    }
+
+    /* ============================================================================
+       5. UI RENDERING (Responsive, Tactile & Accessible)
+       ============================================================================ */
+
+    function renderApp() {
+      const container = document.getElementById('app-container');
+      if (!container) return;
+
+      if (AppState.mode === 'solo') {
+        container.innerHTML = `
+          <div class="w-full max-w-md mx-auto flex flex-col gap-3">
+            ${renderBoardCard(0, false)}
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="w-full flex flex-col gap-3">
+            <!-- 2-Player Shared Call Sync Bar -->
+            <div class="bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+              <div class="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
+                <span class="text-base">🎙️</span>
+                <span>Shared Verbal Call Mode</span>
+              </div>
+              <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300">
+                <input type="checkbox" ${AppState.syncDuoCalls ? 'checked' : ''} onchange="toggleSyncDuoCalls(this.checked)"
+                  class="w-4 h-4 rounded accent-indigo-600 cursor-pointer" />
+                <span>Auto-cross called number on both boards</span>
+              </label>
+            </div>
+
+            <!-- Side-by-Side (Desktop/Tablet) or Stacked (Mobile) 2-Player Boards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              ${renderBoardCard(0, true)}
+              ${renderBoardCard(1, true)}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Render an individual 5x5 BINGO sheet card (used in both Solo & 2-Player modes)
+    function renderBoardCard(boardIdx, isDuo) {
+      const board = AppState.boards[boardIdx];
+      const completedCount = board.completedLineIds.length;
+      const lettersEarned = Math.min(completedCount, 5);
+      const completedLines = board.completedLineIds.map(id => ALL_LINES.find(l => l.id === id)).filter(Boolean);
+
+      // Map each cell index (0..24) to whether it belongs to a completed row/col/diag
+      const winningCellSet = new Set();
+      completedLines.forEach(line => line.cells.forEach(idx => winningCellSet.add(idx)));
+
+      // Determine setup progress
+      const filledCount = board.grid.filter(n => n > 0).length;
+      const nextMissing = getNextMissingNumber(board.grid);
+      const lastCrossed = board.history.length > 0 ? board.history[board.history.length - 1] : null;
+
+      return `
+        <section class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-3xl p-3.5 sm:p-5 shadow-xl shadow-slate-900/5 dark:shadow-black/30 border border-slate-200/80 dark:border-slate-700/80 flex flex-col gap-3 relative overflow-hidden">
+
+          <!-- Optional 2-Player Privacy Curtain -->
+          ${isDuo && board.hidden ? `
+            <div class="absolute inset-0 z-20 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-white">
+              <div class="w-16 h-16 rounded-3xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-3xl mb-3">
+                🙈
+              </div>
+              <h3 class="font-game text-2xl font-bold mb-1">${board.name}'s Sheet Hidden</h3>
+              <p class="text-xs text-slate-300 max-w-xs mb-5">
+                Hidden so your friend can set up their numbers without peeking!
+              </p>
+              <button onclick="togglePrivacyCover(${boardIdx})"
+                class="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm shadow-lg btn-tactile">
+                👁️ Reveal ${board.name}'s Sheet
+              </button>
+            </div>
+          ` : ''}
+
+          <!-- Top Header: Player Label (in Duo) + Reset / Hide Controls -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-xl text-xs font-extrabold uppercase tracking-wider ${
+                board.phase === 'setup'
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'
+                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+              }">
+                ${board.phase === 'setup' ? '✏️ Setup Grid' : '🎯 Live Game'}
+              </span>
+              ${isDuo ? `<span class="font-game font-bold text-base text-slate-700 dark:text-slate-200">${board.name}</span>` : ''}
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              ${isDuo ? `
+                <button onclick="togglePrivacyCover(${boardIdx})" title="Hide/Show Sheet"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 btn-tactile">
+                  🙈 Hide
+                </button>
+              ` : ''}
+              <button onclick="promptResetBoard(${boardIdx})"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-900/40 dark:hover:text-rose-300 transition-colors btn-tactile">
+                🔄 Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- B - I - N - G - O Letter Progress Strip -->
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-2">
+            ${BINGO_LETTERS.map((item, idx) => {
+              const unlocked = idx < lettersEarned;
+              const lineInfo = completedLines[idx];
+              return `
+                <div class="flex flex-col items-center">
+                  <div class="w-full aspect-[5/4] rounded-2xl flex flex-col items-center justify-center font-game font-bold text-2xl sm:text-3xl transition-all duration-300 select-none ${
+                    unlocked
+                      ? `bg-gradient-to-br ${item.color} text-white shadow-lg ring-2 ${item.ring} animate-letter-bounce`
+                      : 'bg-slate-100 dark:bg-slate-700/60 text-slate-300 dark:text-slate-500 border border-dashed border-slate-300 dark:border-slate-600'
+                  }">
+                    <span>${item.char}</span>
+                    ${unlocked && lineInfo ? `
+                      <span class="text-[9px] sm:text-[10px] font-sans font-extrabold uppercase tracking-tighter opacity-90 -mt-1">
+                        ${lineInfo.label}
+                      </span>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Phase-Specific Status Banner (Setup Helper vs Spoken Sequence Tracker) -->
+          ${board.phase === 'setup' ? `
+            <div class="bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl px-3 py-2 flex items-center justify-between gap-2">
+              <div class="text-xs font-semibold text-indigo-900 dark:text-indigo-200 leading-snug">
+                ${filledCount < 25
+                  ? `Tap any empty box to place <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-indigo-600 text-white font-game font-bold">#${nextMissing}</span>`
+                  : board.selectedSwapIdx !== null
+                    ? `Selected <span class="font-bold text-amber-600 dark:text-amber-400">#${board.grid[board.selectedSwapIdx]}</span> — tap another box to swap!`
+                    : `All 25 set! Tap any 2 numbers to swap, or hit Start.`
+                }
+              </div>
+              <span class="text-xs font-game font-bold px-2 py-1 rounded-xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shrink-0 shadow-xs">
+                ${filledCount}/25
+              </span>
+            </div>
+          ` : `
+            <!-- Live Spoken Sequence Bar -->
+            <div class="bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl px-3 py-2 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 overflow-hidden flex-1">
+                <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+                  Sequence:
+                </span>
+                <div class="flex items-center gap-1 overflow-x-auto sequence-scroll py-0.5">
+                  ${board.history.length === 0
+                    ? `<span class="text-xs text-slate-400 dark:text-slate-500 italic">Tap any number called out loud...</span>`
+                    : board.history.map((entry, hIdx) => {
+                        const isLatest = hIdx === board.history.length - 1;
+                        return `
+                          <span class="px-2 py-0.5 rounded-lg font-game text-xs font-bold shrink-0 ${
+                            isLatest
+                              ? 'bg-rose-500 text-white shadow-xs'
+                              : 'bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                          }">
+                            ${entry.num}
+                          </span>
+                        `;
+                      }).join('<span class="text-slate-300 dark:text-slate-600 text-[10px]">→</span>')
+                  }
+                </div>
+              </div>
+
+              <!-- Undo Last Cross Button -->
+              <button onclick="undoLastCross(${boardIdx})" ${board.history.length === 0 ? 'disabled' : ''}
+                title="Undo last crossed number"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1 transition-all ${
+                  board.history.length === 0
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                    : 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 hover:bg-amber-200 btn-tactile'
+                }">
+                <span>↩️</span>
+                <span>Undo</span>
+              </button>
+            </div>
+          `}
+
+          <!-- 5x5 Interactive Number Grid -->
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-2.5 p-2 sm:p-2.5 rounded-2xl bg-slate-100/90 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700/80">
+            ${board.grid.map((num, idx) => {
+              const isSetup = board.phase === 'setup';
+              const isEmpty = num === 0;
+              const isSelectedForSwap = isSetup && board.selectedSwapIdx === idx;
+              const isCrossed = !isSetup && board.crossed[idx];
+              const isInCompletedLine = !isSetup && winningCellSet.has(idx);
+              const isMostRecent = !isSetup && lastCrossed && lastCrossed.index === idx;
+
+              // Compute dynamic cell classes for maximum visual clarity & delight
+              let cellClasses = 'aspect-square rounded-xl sm:rounded-2xl font-game font-bold text-xl sm:text-2xl md:text-3xl flex items-center justify-center relative transition-all duration-150 select-none ';
+
+              if (isSetup) {
+                if (isEmpty) {
+                  cellClasses += 'bg-white/70 dark:bg-slate-800/60 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-300 dark:text-slate-600 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 cursor-pointer';
+                } else if (isSelectedForSwap) {
+                  cellClasses += 'bg-amber-400 text-slate-900 ring-4 ring-amber-300/60 scale-105 shadow-lg cursor-pointer z-10';
+                } else {
+                  cellClasses += 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-b-4 border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:-translate-y-0.5 shadow-xs cursor-pointer';
+                }
+              } else {
+                // Playing state
+                if (isCrossed) {
+                  if (isInCompletedLine) {
+                    cellClasses += 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md ring-2 ring-emerald-300 dark:ring-emerald-500/60 cursor-pointer';
+                  } else {
+                    cellClasses += 'bg-rose-50 dark:bg-rose-950/50 text-rose-400 dark:text-rose-300/70 border border-rose-200 dark:border-rose-800/60 cursor-pointer';
+                  }
+                } else {
+                  cellClasses += 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-b-4 border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:border-indigo-300 active:translate-y-0.5 shadow-xs cursor-pointer';
+                }
+              }
+
+              return `
+                <button
+                  type="button"
+                  onclick="${isSetup ? `handleSetupCellClick(${boardIdx}, ${idx})` : `handlePlayCellClick(${boardIdx}, ${idx})`}"
+                  class="${cellClasses}"
+                  aria-label="${isEmpty ? 'Empty cell' : `Number ${num}${isCrossed ? ', crossed' : ''}`}">
+
+                  <!-- Cell Number -->
+                  <span class="${isCrossed && !isInCompletedLine ? 'opacity-65' : ''}">
+                    ${isEmpty ? '+' : num}
+                  </span>
+
+                  <!-- Hand-Drawn SVG Marker Cross Overlay when crossed out -->
+                  ${isCrossed ? `
+                    <svg class="absolute inset-0 w-full h-full p-2 sm:p-2.5 pointer-events-none" viewBox="0 0 100 100">
+                      <path d="M 20 20 L 80 80" stroke="${isInCompletedLine ? 'rgba(255,255,255,0.85)' : '#f43f5e'}" stroke-width="11" stroke-linecap="round" fill="none" class="cross-path-1" />
+                      <path d="M 80 20 L 20 80" stroke="${isInCompletedLine ? 'rgba(255,255,255,0.85)' : '#f43f5e'}" stroke-width="11" stroke-linecap="round" fill="none" class="cross-path-2" />
+                    </svg>
+                  ` : ''}
+
+                  <!-- Subtle Pulse Dot on the Most Recently Called Number -->
+                  ${isMostRecent ? `
+                    <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-800"></span>
+                  ` : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Bottom Action Controls (Setup Actions vs Live Stats) -->
+          ${board.phase === 'setup' ? `
+            <div class="flex flex-col gap-2 pt-0.5">
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="shuffleBoard(${boardIdx})"
+                  class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center gap-1.5 btn-tactile">
+                  <span>🔀</span>
+                  <span>Shuffle 1–25</span>
+                </button>
+
+                ${filledCount > 0 && filledCount < 25 ? `
+                  <button type="button" onclick="autoFillRemaining(${boardIdx})"
+                    class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 flex items-center justify-center gap-1.5 btn-tactile">
+                    <span>✨</span>
+                    <span>Fill Rest</span>
+                  </button>
+                ` : `
+                  <button type="button" onclick="clearBoardForManualEntry(${boardIdx})"
+                    class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center gap-1.5 btn-tactile">
+                    <span>🧹</span>
+                    <span>Clear &amp; Tap 1–25</span>
+                  </button>
+                `}
+              </div>
+
+              <button type="button" onclick="lockBoardAndPlay(${boardIdx})" ${filledCount < 25 ? 'disabled' : ''}
+                class="w-full py-3.5 px-4 rounded-2xl font-game font-bold text-base sm:text-lg tracking-wide flex items-center justify-center gap-2 transition-all ${
+                  filledCount < 25
+                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg shadow-indigo-500/25 hover:brightness-105 btn-tactile'
+                }">
+                <span>▶️</span>
+                <span>${filledCount < 25 ? `Place ${25 - filledCount} More Number${25 - filledCount === 1 ? '' : 's'}` : 'Lock Numbers & Start Playing!'}</span>
+              </button>
+            </div>
+          ` : `
+            <!-- Live Game Footer Summary -->
+            <div class="flex items-center justify-between px-1 pt-0.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span>Crossed: <strong class="text-slate-800 dark:text-slate-200">${board.history.length}/25</strong></span>
+              <span>Lines: <strong class="${completedCount >= 5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'}">${completedCount} / 5</strong></span>
+              ${completedCount >= 5 ? `
+                <button onclick="openVictoryModal(AppState.boards[${boardIdx}])" class="text-amber-600 dark:text-amber-400 underline font-extrabold">
+                  🏆 BINGO Achieved!
+                </button>
+              ` : `
+                <span>${5 - lettersEarned} more line${5 - lettersEarned === 1 ? '' : 's'} to win</span>
+              `}
+            </div>
+          `}
+        </section>
+      `;
+    }
+
+    /* ============================================================================
+       6. MODALS, MODE SWITCHING, THEME & TOAST HELPERS
+       ============================================================================ */
+
+    function switchGameMode(newMode) {
+      AppState.mode = newMode;
+      const soloBtn = document.getElementById('mode-solo-btn');
+      const duoBtn = document.getElementById('mode-duo-btn');
+
+      if (newMode === 'solo') {
+        soloBtn.className = 'px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm';
+        duoBtn.className = 'px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700';
+      } else {
+        duoBtn.className = 'px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm';
+        soloBtn.className = 'px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700';
+      }
+      SoundFX.playPop(1);
+      renderApp();
+    }
+
+    function toggleSyncDuoCalls(checked) {
+      AppState.syncDuoCalls = checked;
+      showToast(checked ? 'Called numbers will cross on both boards' : 'Boards will cross independently');
+    }
+
+    function toggleSound() {
+      SoundFX.enabled = !SoundFX.enabled;
+      document.getElementById('sound-icon').textContent = SoundFX.enabled ? '🔊' : '🔇';
+      if (SoundFX.enabled) SoundFX.playPop(2);
+      showToast(SoundFX.enabled ? 'Sound effects ON' : 'Sound effects muted');
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      document.getElementById('theme-icon').textContent = isDark ? '☀️' : '🌙';
+    }
+
+    // Prompt user before resetting an active game board (never uses window.confirm)
+    function promptResetBoard(boardIdx) {
+      const board = AppState.boards[boardIdx];
+      // If still in setup phase and nothing crossed yet, reshuffle/reset directly without interrupting
+      if (board.phase === 'setup') {
+        AppState.boards[boardIdx] = createBoardState(board.name, true);
+        SoundFX.playPop(1);
+        showToast('Board reset with fresh random numbers');
+        renderApp();
+        return;
+      }
+
+      AppState.activeModalBoardIndex = boardIdx;
+      const modal = document.getElementById('confirm-modal');
+      const actionBtn = document.getElementById('confirm-action-btn');
+      actionBtn.onclick = () => {
+        const bName = AppState.boards[AppState.activeModalBoardIndex].name;
+        AppState.boards[AppState.activeModalBoardIndex] = createBoardState(bName, true);
+        closeConfirmModal();
+        SoundFX.playPop(1);
+        renderApp();
+      };
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openRulesModal() {
+      const modal = document.getElementById('rules-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeRulesModal() {
+      const modal = document.getElementById('rules-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openVictoryModal(board) {
+      const modal = document.getElementById('victory-modal');
+      const headline = document.getElementById('victory-headline');
+      const subtext = document.getElementById('victory-subtext');
+
+      headline.textContent = AppState.mode === 'duo'
+        ? `${board.name.toUpperCase()} WINS!`
+        : 'BINGO! YOU WIN!';
+      subtext.textContent = `Completed ${board.completedLineIds.length} lines in ${board.history.length} spoken numbers!`;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function dismissVictoryModal() {
+      const modal = document.getElementById('victory-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function startNewBoardFromWin() {
+      dismissVictoryModal();
+      if (AppState.mode === 'duo') {
+        AppState.boards[0] = createBoardState('Player 1', true);
+        AppState.boards[1] = createBoardState('Player 2', true);
+      } else {
+        AppState.boards[0] = createBoardState('My Board', true);
+      }
+      renderApp();
+    }
+
+    // Non-intrusive floating toast feedback
+    let toastTimeout = null;
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="bg-slate-900/90 dark:bg-white/95 text-white dark:text-slate-900 px-4 py-2 rounded-full text-xs font-bold shadow-lg animate-pop-in text-center">
+          ${message}
+        </div>
+      `;
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        container.innerHTML = '';
+      }, 2400);
+    }
+
+    // Initialize the game board on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderApp();
+    });
+  </script>
+</body>
+</html>
